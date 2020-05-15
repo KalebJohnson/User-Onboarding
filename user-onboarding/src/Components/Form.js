@@ -2,15 +2,21 @@ import React, { useState } from 'react';
 import ReactDOM from "react-dom";
 import '../App.css';
 import * as yup from 'yup';
+import axios from 'axios';
 
 const schema = yup.object().shape({
-    name: yup.string().required(),
-    email: yup.string().email().required(),
-    password: yup.string().required(),
-    terms: yup.boolean().oneOf([true])
+    name: yup.string().required("Please enter a name"),
+    email: yup.string().email().required("Please enter an Email address"),
+    password: yup.string().required("Please enter a password"),
+    terms: yup.boolean().oneOf([true], "Please read these useless terms")
 })
 
+
+
 const Form = props  => {
+
+    const [users , setUsers] = useState([])
+
     const [form, setForm] = useState({
         name: "",
         email: "",
@@ -19,14 +25,20 @@ const Form = props  => {
       });
     
       const handleChanges = event => {
-        setForm({...form, [event.target.name]: event.target.value });
+        event.persist()
+        validate(event)
         console.log(form, event.target.checked);
+
         let value = event.target.type === 'checkbox' ? event.target.checked :event.target.value 
-      };
-      const submitForm = event => {
+        setForm({...form, [event.target.name]: value});
+    };
+
+      const submitForm = (event) => {
         event.preventDefault();
-        props.addNewForm(form);
-        setForm({ name: "", email: "", password: "", terms: false});
+        console.log("Submitted!");
+        axios.post('https://reqres.in/api/users', form)
+        .then( response => console.log(response))
+        .catch(err => console.log(err))
       };
 
       const [errors, setErrors] = useState({
@@ -34,14 +46,29 @@ const Form = props  => {
         email: "",
         password: "",
         terms: ""
-      })
+      });
 
-      const val = () => {
+      const validate = (event) => {
+        yup.reach(schema, event.target.name)
+        .validate(event.target.value)
+        .then( valid =>{
+            setErrors({
+                ...errors,
+                [event.target.name]: ""
+            })
 
-      }
+        })
+        .catch(err => {
+            console.log(err.errors)
+            setErrors({
+                ...errors,
+                [event.target.name]: err.errors[0]
+            })
+        })
+      };
 
       return (
-        <form className="MemberForm" onSubmit={submitForm}>
+        <form className="form" onSubmit={submitForm}>
           <label htmlFor="name">Name</label>
           <input
             onChange={handleChanges}
@@ -51,7 +78,8 @@ const Form = props  => {
             placeholder="Name.."
             value={form.title}
           />
-          <label htmlFor="member" htmlFor='email'>Email</label>
+          {errors.name.length > 0 ? <p>{errors.name}</p>: null}
+          <label htmlFor='email'>Email</label>
           <input
             onChange={handleChanges}
             id="email"
@@ -60,6 +88,8 @@ const Form = props  => {
             placeholder="Email.."
             value={form.email}
           />
+            {errors.email.length > 0 ? <p>{errors.email}</p>: null}
+
           <label htmlFor='password'> Password</label>
           <input
             onChange={handleChanges}
@@ -69,16 +99,18 @@ const Form = props  => {
             placeholder="Password.."
             value={form.password}/>
           
+          {errors.password.length > 0 ? <p>{errors.password}</p>: null}
+
           <label htmlFor='terms'>Some boring Terms you wont read.</label>
             <input type="checkbox"
              id="terms" 
              name="terms" 
              checked={form.terms} 
-             value={false}
              onChange={handleChanges}
             
              />
             
+            {errors.terms === false ? <p>{errors.terms}</p>: null}
           
           <button type="submit">Enter!</button>
         </form>
